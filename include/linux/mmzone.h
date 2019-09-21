@@ -22,6 +22,8 @@
 #include <linux/page-flags.h>
 #include <asm/page.h>
 
+#define CONFIG_FORCE_MAX_ZONEORDER 12
+
 /* Free memory management - zoned buddy allocator.  */
 #ifndef CONFIG_FORCE_MAX_ZONEORDER
 #define MAX_ORDER 11

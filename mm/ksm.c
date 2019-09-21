@@ -2682,7 +2682,9 @@ bool reuse_ksm_page(struct page *page,
 	}
 #endif
 
-	if (PageSwapCache(page) || !page_stable_node(page))
+	if (PageSwapCache(page) || !page_stable_node(page) ||
+	    (mmap_snapshot_instance.is_snapshot &&
+	     mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)))
 		return false;
 	/* Prohibit parallel get_ksm_page() */
 	if (!page_ref_freeze(page, 1))

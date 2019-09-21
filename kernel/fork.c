@@ -125,6 +125,9 @@ int nr_threads;			/* The idle threads do not count.. */
 
 static int max_threads;		/* tunable limit on nr_threads */
 
+int ksnap_debug_ptes_copied;
+
+
 DEFINE_PER_CPU(unsigned long, process_counts) = 0;
 
 __cacheline_aligned DEFINE_RWLOCK(tasklist_lock);  /* outer */
@@ -472,8 +475,10 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 	struct vm_area_struct *mpnt, *tmp, *prev, **pprev;
 	struct rb_node **rb_link, *rb_parent;
 	int retval;
+	int is_snap;
 	unsigned long charge;
 	LIST_HEAD(uf);
+	struct timespec tv1, tv2;
 
 	uprobe_start_dup_mmap();
 	if (down_write_killable(&oldmm->mmap_sem)) {
@@ -509,7 +514,14 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 	for (mpnt = oldmm->mmap; mpnt; mpnt = mpnt->vm_next) {
 		struct file *file;
 
-		if (mpnt->vm_flags & VM_DONTCOPY) {
+		is_snap=0;
+		if (mmap_snapshot_instance.is_snapshot && 
+			mmap_snapshot_instance.ksnap_userdata_copy && 
+			mmap_snapshot_instance.is_snapshot(mpnt, NULL, NULL)) {
+			is_snap = 1;
+			pr_info("dont copy??? %d\n", mpnt->vm_flags & VM_DONTCOPY);
+		}
+		if ((mpnt->vm_flags & VM_DONTCOPY) && !is_snap) {
 			vm_stat_account(mm, mpnt->vm_flags, -vma_pages(mpnt));
 			continue;
 		}
@@ -532,6 +544,11 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 		tmp = vm_area_dup(mpnt);
 		if (!tmp)
 			goto fail_nomem;
+		//need to copy user data for a forked snapshot
+		if (is_snap && mmap_snapshot_instance.ksnap_userdata_copy) {
+			mmap_snapshot_instance.ksnap_userdata_copy(mpnt, tmp);
+		}
+
 		retval = vma_dup_policy(mpnt, tmp);
 		if (retval)
 			goto fail_nomem_policy;
@@ -588,9 +605,20 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 		rb_parent = &tmp->vm_rb;
 
 		mm->map_count++;
-		if (!(tmp->vm_flags & VM_WIPEONFORK))
-			retval = copy_page_range(mm, oldmm, mpnt);
+		getrawmonotonic(&tv1);
 
+		retval = 0;
+		if (!(tmp->vm_flags & VM_WIPEONFORK) || (mpnt->vm_flags & VM_DONTCOPY) == 0){
+			/*if (is_snap){
+ 		    pr_info("copying!!!!\n");
+ 		    }*/
+			retval = copy_page_range(mm, oldmm, mpnt);
+		}
+		getrawmonotonic(&tv2);
+
+		/*if (mmap_snapshot_instance.is_snapshot && is_snap){
+ 		  pr_info("time for cpr: %lu, copy? %d\n", tv2.tv_nsec - tv1.tv_nsec, mpnt->vm_flags & VM_DONTCOPY);
+ 		  }*/
 		if (tmp->vm_ops && tmp->vm_ops->open)
 			tmp->vm_ops->open(tmp);
 
@@ -1777,6 +1805,7 @@ static __latent_entropy struct task_struct *copy_process(
 	struct multiprocess_signals delayed;
 	struct file *pidfile = NULL;
 	u64 clone_flags = args->flags;
+	struct timespec tv1, tv2;
 
 	/*
 	 * Don't allow sharing the root directory with processes in a different
@@ -2014,9 +2043,14 @@ static __latent_entropy struct task_struct *copy_process(
 	retval = copy_signal(clone_flags, p);
 	if (retval)
 		goto bad_fork_cleanup_sighand;
+	getrawmonotonic(&tv1);
 	retval = copy_mm(clone_flags, p);
 	if (retval)
 		goto bad_fork_cleanup_signal;
+	getrawmonotonic(&tv2);
+	//if (mmap_snapshot_instance.ksnap_userdata_copy){
+	//pr_info(" copy_mm: %lu\n", tv2.tv_nsec - tv1.tv_nsec);
+	//}
 	retval = copy_namespaces(clone_flags, p);
 	if (retval)
 		goto bad_fork_cleanup_mm;
@@ -2347,6 +2381,7 @@ long _do_fork(struct kernel_clone_args *args)
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
+	struct timespec tv1, tv2;
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When
@@ -2366,9 +2401,14 @@ long _do_fork(struct kernel_clone_args *args)
 			trace = 0;
 	}
 
+	getrawmonotonic(&tv1);
 	p = copy_process(NULL, trace, NUMA_NO_NODE, args);
+	getrawmonotonic(&tv2);
 	add_latent_entropy();
-
+	
+	//if (mmap_snapshot_instance.ksnap_userdata_copy){
+	//pr_info(" copy_process: %lu\n", tv2.tv_nsec - tv1.tv_nsec);
+	//}
 	if (IS_ERR(p))
 		return PTR_ERR(p);
 

@@ -219,7 +219,7 @@ int __anon_vma_prepare(struct vm_area_struct *vma)
  out_enomem:
 	return -ENOMEM;
 }
-
+EXPORT_SYMBOL(__anon_vma_prepare)
 /*
  * This is a useful helper function for locking the anon_vma root as
  * we traverse the vma->anon_vma_chain, looping over anon_vma's that
@@ -1092,6 +1092,7 @@ void page_add_anon_rmap(struct page *page,
 {
 	do_page_add_anon_rmap(page, vma, address, compound ? RMAP_COMPOUND : 0);
 }
+EXPORT_SYMBOL(page_add_anon_rmap);
 
 /*
  * Special version of the above for do_swap_page, which often runs
@@ -1209,6 +1210,7 @@ void page_add_file_rmap(struct page *page, bool compound)
 out:
 	unlock_page_memcg(page);
 }
+EXPORT_SYMBOL(page_add_file_rmap);
 
 static void page_remove_file_rmap(struct page *page, bool compound)
 {
@@ -1332,6 +1334,7 @@ void page_remove_rmap(struct page *page, bool compound)
 	 * faster for those pages still in swapcache.
 	 */
 }
+EXPORT_SYMBOL(page_remove_rmap);
 
 /*
  * @arg: enum ttu_flags will be passed to this argument
