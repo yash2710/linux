@@ -118,6 +118,9 @@ pgprot_t vm_get_page_prot(unsigned long vm_flags)
 }
 EXPORT_SYMBOL(vm_get_page_prot);
 
+struct mmap_snapshot mmap_snapshot_instance;
+EXPORT_SYMBOL(mmap_snapshot_instance);
+
 static pgprot_t vm_pgprot_modify(pgprot_t oldprot, unsigned long vm_flags)
 {
 	return pgprot_modify(oldprot, vm_get_page_prot(vm_flags));
@@ -2822,6 +2825,9 @@ int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len,
 	}
 
 	/* Detach vmas from rbtree */
+	if (tim_debug_instance.tim_unmap_debug) {
+		tim_debug_instance.tim_unmap_debug(vma, mm);
+	}
 	detach_vmas_to_be_unmapped(mm, vma, prev, end);
 
 	if (downgrade)

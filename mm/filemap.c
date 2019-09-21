@@ -837,6 +837,13 @@ static int __add_to_page_cache_locked(struct page *page,
 			return error;
 	}
 
+	if (tim_debug_instance.ptr_of_interest3 == mapping) {
+		if (mapping -> mrpages > 130) {
+			pr_emerg(" greater than 130\n");
+			dump_stack();
+		}
+	}
+
 	get_page(page);
 	page->mapping = mapping;
 	page->index = offset;
@@ -1527,6 +1534,18 @@ repeat:
 out:
 	rcu_read_unlock();
 
+	/*if (tim_debug_instance.ptr_of_interest2 == page && tim_debug_instance.ptr_of_interest2 != NULL){
+		  printk("\n\n*******************FIND GET PAGE for pid %d, SPECIAL PAGE!!!!!*******************\n", current->pid);
+		  dump_page(page);
+		  printk("\n**************************************************\n\n");
+		}
+	
+		if (tim_debug_instance.ptr_of_interest1 == mapping & tim_debug_instance.ptr_of_interest1 != NULL){
+		  printk("\n\n*******************FIND GET PAGE for pid %d, SOME OTHER GUY*******************\n", current->pid);
+		  dump_page(page);
+		  printk("\n**************************************************\n\n");
+		  }*/
+			
 	return page;
 }
 EXPORT_SYMBOL(find_get_entry);
