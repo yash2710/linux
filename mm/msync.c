@@ -65,7 +65,7 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 	    mmap_snapshot_instance.snapshot_msync &&
 	    ((flags & MS_KSNAP_GET) || (flags & MS_KSNAP_MAKE) ||
 	     (flags & MS_KSNAP_GET_MERGE))) { //TODO: for commit, need to relax these constraints
-		mmap_snapshot_instance.snapshot_msync(vma, flags); //TODO: this function name in the struct should change
+		mmap_snapshot_instance.snapshot_msync(vma, flags, 1); //TODO: this function name in the struct should change
 		goto out_unlock;
 	}
 	for (;;) {

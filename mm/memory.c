@@ -93,6 +93,7 @@ struct page *mem_map;
 EXPORT_SYMBOL(mem_map);
 #endif
 
+int incremented_anon = 0;
 /*
  * A number of key systems in x86 including ioremap() rely on the assumption
  * that high_memory defines the upper bound on direct map memory, then end
@@ -760,7 +761,8 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 			 * keep things as they are.
 			 */
 			get_page(page);
-			rss[mm_counter(page)]++;
+			if (!(mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)))
+				rss[mm_counter(page)]++;
 			page_dup_rmap(page, false);
 
 			/*
@@ -2195,7 +2197,7 @@ static void fault_dirty_shared_page(struct vm_area_struct *vma,
 	struct address_space *mapping;
 	bool dirtied;
 	bool page_mkwrite = vma->vm_ops && vma->vm_ops->page_mkwrite;
-
+	bool is_conv_seg = (mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
 	dirtied = set_page_dirty(page);
 	VM_BUG_ON_PAGE(PageAnon(page), page);
 	/*
@@ -2205,10 +2207,12 @@ static void fault_dirty_shared_page(struct vm_area_struct *vma,
 	 * release semantics to prevent the compiler from undoing this copying.
 	 */
 	mapping = page_rmapping(page);
-	if (mmap_snapshot_instance.is_snapshot &&
-	    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
+	if (is_conv_seg &&
 	    mmap_snapshot_instance.do_snapshot_add_pte) {
 		mmap_snapshot_instance.do_snapshot_add_pte(vma, page, page_table, address);
+		if (incremented_anon == 1) {
+			dec_mm_counter_fast(mm, MM_ANONPAGES);
+		}
 	}
 	unlock_page(page);
 
@@ -2280,7 +2284,7 @@ static vm_fault_t wp_page_copy(struct vm_fault *vmf)
 	int page_copied = 0;
 	struct mem_cgroup *memcg;
 	struct mmu_notifier_range range;
-
+	bool is_conv_seg = (mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
 	if (unlikely(anon_vma_prepare(vma)))
 		goto oom;
 
@@ -2294,7 +2298,11 @@ static vm_fault_t wp_page_copy(struct vm_fault *vmf)
 				vmf->address);
 		if (!new_page)
 			goto oom;
-		cow_user_page(new_page, old_page, vmf->address, vma);
+
+		if (is_conv_seg && mmap_snapshot_instance.conv_cow_user_page)
+			mmap_snapshot_instance.conv_cow_user_page(new_page, old_page, address, vma, &init_mm);
+		else
+			cow_user_page(new_page, old_page, vmf->address, vma);
 	}
 
 	if (mem_cgroup_try_charge_delay(new_page, mm, GFP_KERNEL, &memcg, false))
@@ -2315,9 +2323,11 @@ static vm_fault_t wp_page_copy(struct vm_fault *vmf)
 			if (!PageAnon(old_page)) {
 				dec_mm_counter_fast(mm,
 						mm_counter_file(old_page));
+				incremented_anon = 1;
 				inc_mm_counter_fast(mm, MM_ANONPAGES);
 			}
 		} else {
+			incremented_anon = 1;
 			inc_mm_counter_fast(mm, MM_ANONPAGES);
 		}
 		flush_cache_page(vma, vmf->address, pte_pfn(vmf->orig_pte));
@@ -2367,8 +2377,7 @@ static vm_fault_t wp_page_copy(struct vm_fault *vmf)
 		}
 
 		//we need to hold on to this page if it belongs to a snapshot (for the reference)
-		if (mmap_snapshot_instance.is_snapshot &&
-		    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)) {
+		if (is_conv_seg) {
 			lock_page(old_page);
 			get_page(old_page);
 		}
@@ -2520,7 +2529,7 @@ static vm_fault_t do_wp_page(struct vm_fault *vmf)
 	__releases(vmf->ptl)
 {
 	struct vm_area_struct *vma = vmf->vma;
-
+	bool is_conv_seg = (mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
 	vmf->page = vm_normal_page(vma, vmf->address, vmf->orig_pte);
 	if (!vmf->page) {
 		/*
@@ -2560,8 +2569,7 @@ static vm_fault_t do_wp_page(struct vm_fault *vmf)
 		}
 		bool reuse;
 		/*don't reuse if snapshot*/
-		if (mmap_snapshot_instance.is_snapshot &&
-		    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)) {
+		if (is_conv_seg)) {
 			reuse = false;
 		}
 		else
@@ -3257,6 +3265,7 @@ vm_fault_t alloc_set_pte(struct vm_fault *vmf, struct mem_cgroup *memcg,
 	bool write = vmf->flags & FAULT_FLAG_WRITE;
 	pte_t entry;
 	vm_fault_t ret;
+	bool is_conv_seg = (mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
 
 	if (pmd_none(*vmf->pmd) && PageTransCompound(page) &&
 			IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE)) {
@@ -3283,13 +3292,16 @@ vm_fault_t alloc_set_pte(struct vm_fault *vmf, struct mem_cgroup *memcg,
 	if (write)
 		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
 	/* copy-on-write page */
+	//Verify anon inc_mm_counter_fast placement
 	if (write && !(vma->vm_flags & VM_SHARED)) {
-		inc_mm_counter_fast(vma->vm_mm, MM_ANONPAGES);
+		if(!is_conv_seg)
+			inc_mm_counter_fast(vma->vm_mm, MM_ANONPAGES);
 		page_add_new_anon_rmap(page, vma, vmf->address, false);
 		mem_cgroup_commit_charge(page, memcg, false, false);
 		lru_cache_add_active_or_unevictable(page, vma);
 	} else {
-		inc_mm_counter_fast(vma->vm_mm, mm_counter_file(page));
+		if(!is_conv_seg)
+			inc_mm_counter_fast(vma->vm_mm, mm_counter_file(page));
 		page_add_file_rmap(page, false);
 	}
 	set_pte_at(vma->vm_mm, vmf->address, vmf->pte, entry);
@@ -3319,7 +3331,7 @@ vm_fault_t finish_fault(struct vm_fault *vmf)
 {
 	struct page *page;
 	vm_fault_t ret = 0;
-
+	bool is_conv_seg = (mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
 	/* Did we COW the page? */
 	if ((vmf->flags & FAULT_FLAG_WRITE) &&
 	    !(vmf->vma->vm_flags & VM_SHARED))
@@ -3339,11 +3351,15 @@ vm_fault_t finish_fault(struct vm_fault *vmf)
 		pte_unmap_unlock(vmf->pte, vmf->ptl);
 
 	if (vmf->flags & FAULT_FLAG_WRITE &&
-	    mmap_snapshot_instance.is_snapshot &&
-	    mmap_snapshot_instance.is_snapshot(vmf->vma, NULL, NULL) &&
+	    is_conv_seg &&
 	    mmap_snapshot_instance.do_snapshot_add_pte) {
-		mmap_snapshot_instance.do_snapshot_add_pte(
-			vmf->vma, NULL, vmf->pte, vmf->address);
+		//decrement the counter...we do our own accounting and this will screw it up
+		if (anon) {
+			dec_mm_counter_fast(mm, MM_ANONPAGES);
+		} else {
+			dec_mm_counter_fast(mm, MM_FILEPAGES);
+		}
+		mmap_snapshot_instance.do_snapshot_add_pte(vmf->vma, NULL, vmf->pte, vmf->address);
 	}
 	return ret;
 }

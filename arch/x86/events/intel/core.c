@@ -2205,7 +2205,10 @@ int intel_pmu_save_and_restart(struct perf_event *event)
 	 * transaction and is then set back to shortly before the
 	 * overflow, and overflows and aborts again.
 	 */
-	if (unlikely(event_is_checkpointed(event))) {
+	perf_event_overflow_update_period(event); 
+	if (unlikely(event_is_checkpointed(
+						      event)))
+	{
 		/* No race with NMIs because the counter should not be armed */
 		wrmsrl(event->hw.event_base, 0);
 		local64_set(&event->hw.prev_count, 0);
@@ -3562,7 +3565,7 @@ static void intel_pmu_cpu_starting(int cpu)
 	 * Deal with CPUs that don't clear their LBRs on power-up.
 	 */
 	intel_pmu_lbr_reset();
-
+	set_in_cr4(X86_CR4_PCE);
 	cpuc->lbr_sel = NULL;
 
 	if (x86_pmu.flags & PMU_FL_TFA) {
@@ -4234,7 +4237,7 @@ __init int intel_pmu_init(void)
 
 	x86_pmu.events_maskl		= ebx.full;
 	x86_pmu.events_mask_len		= eax.split.mask_length;
-
+	pr_emerg(" cnt val bits???? %d version %d\n", x86_pmu.cntval_bits, version);
 	x86_pmu.max_pebs_events		= min_t(unsigned, MAX_PEBS_EVENTS, x86_pmu.num_counters);
 
 	/*

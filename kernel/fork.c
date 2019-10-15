@@ -522,7 +522,6 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 			mmap_snapshot_instance.ksnap_userdata_copy && 
 			mmap_snapshot_instance.is_snapshot(mpnt, NULL, NULL)) {
 			is_snap = 1;
-			pr_info("dont copy??? %d\n", mpnt->vm_flags & VM_DONTCOPY);
 		}
 		if ((mpnt->vm_flags & VM_DONTCOPY) && !is_snap) {
 			vm_stat_account(mm, mpnt->vm_flags, -vma_pages(mpnt));
@@ -612,9 +611,6 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 
 		retval = 0;
 		if (!(tmp->vm_flags & VM_WIPEONFORK) || (mpnt->vm_flags & VM_DONTCOPY) == 0){
-			/*if (is_snap){
- 		    pr_info("copying!!!!\n");
- 		    }*/
 			retval = copy_page_range(mm, oldmm, mpnt);
 		}
 		getrawmonotonic(&tv2);

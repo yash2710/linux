@@ -735,6 +735,12 @@ dotraplinkage void do_debug(struct pt_regs *regs, long error_code)
 	/* Filter out all the reserved bits which are preset to 1 */
 	dr6 &= ~DR6_RESERVED;
 
+	if (current->task_clock.user_status &&
+	    task_clock_func.task_clock_entry_is_singlestep &&
+	    task_clock_func.task_clock_entry_is_singlestep(
+		    current->task_clock.group_info, regs)) {
+		return;
+	}
 	/*
 	 * The SDM says "The processor clears the BTF flag when it
 	 * generates a debug exception."  Clear TIF_BLOCKSTEP to keep

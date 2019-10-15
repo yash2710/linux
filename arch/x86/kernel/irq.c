@@ -216,6 +216,7 @@ u64 arch_irq_stat_cpu(unsigned int cpu)
 #endif
 	return sum;
 }
+EXPORT_SYMBOL_GPL(arch_irq_stat_cpu);
 
 u64 arch_irq_stat(void)
 {

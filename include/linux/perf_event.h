@@ -686,7 +686,7 @@ struct perf_event {
 	perf_overflow_handler_t		orig_overflow_handler;
 	struct bpf_prog			*prog;
 #endif
-
+u64					last_written;
 #ifdef CONFIG_EVENT_TRACING
 	struct trace_event_call		*tp_event;
 	struct event_filter		*filter;
@@ -701,6 +701,10 @@ struct perf_event {
 
 	struct list_head		sb_list;
 #endif /* CONFIG_PERF_EVENTS */
+
+	/*TASK CLOCK STUFF*/
+	struct task_clock_group_info *task_clock_group;
+	wait_queue_head_t task_clock_waitq;
 };
 
 
@@ -972,6 +976,8 @@ extern void perf_prepare_sample(struct perf_event_header *header,
 				struct perf_sample_data *data,
 				struct perf_event *event,
 				struct pt_regs *regs);
+
+extern void perf_event_overflow_update_period(struct perf_event *event);
 
 extern int perf_event_overflow(struct perf_event *event,
 				 struct perf_sample_data *data,
