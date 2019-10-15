@@ -363,7 +363,7 @@ struct perf_event_attr {
 
 				exclude_host   :  1, /* don't count in host   */
 				exclude_guest  :  1, /* don't count in guest  */
-
+				task_clock		 :	1,
 				exclude_callchain_kernel : 1, /* exclude kernel callchains */
 				exclude_callchain_user   : 1, /* exclude user callchains */
 				mmap2          :  1, /* include mmap with inode data     */
@@ -462,6 +462,25 @@ struct perf_event_query_bpf {
 #define PERF_EVENT_IOC_PAUSE_OUTPUT		_IOW('$', 9, __u32)
 #define PERF_EVENT_IOC_QUERY_BPF		_IOWR('$', 10, struct perf_event_query_bpf *)
 #define PERF_EVENT_IOC_MODIFY_ATTRIBUTES	_IOW('$', 11, struct perf_event_attr *)
+#define PERF_EVENT_IOC_TASK_CLOCK_ADD_TICKS _IO('$', 12)
+#define PERF_EVENT_IOC_TASK_CLOCK_WOKE_UP _IO('$', 13)
+#define PERF_EVENT_IOC_TASK_CLOCK_STOP _IO('$', 14)
+#define PERF_EVENT_IOC_TASK_CLOCK_START _IO('$', 15)
+#define PERF_EVENT_IOC_TASK_CLOCK_RESET _IO('$', 16)
+#define PERF_EVENT_IOC_TASK_CLOCK_STOP_NO_NOTIFY _IO('$', 17)
+#define PERF_EVENT_IOC_TASK_CLOCK_START_NO_NOTIFY _IO('$', 18)
+#define PERF_EVENT_IOC_TASK_CLOCK_READ_CLOCK _IO('$', 19)
+/* 
+ * rearranged to have sequential numbers
+ * renumbered due to conflicts 
+ */
+#define PERF_EVENT_IOC_TASK_CLOCK_HALT _IO('$', 20)
+#define PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE _IO('$', 21)
+#define PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE_OTHER _IO('$', 22)
+#define PERF_EVENT_IOC_TASK_CLOCK_WAIT _IO('$', 23)
+#define PERF_EVENT_IOC_TASK_CLOCK_SLEEP _IO('$', 24)
+
+extern int tim_perf_debug_counter;
 
 enum perf_event_ioc_flags {
 	PERF_IOC_FLAG_GROUP		= 1U << 0,

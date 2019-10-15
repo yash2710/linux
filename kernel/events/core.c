@@ -4872,8 +4872,13 @@ static __poll_t perf_poll(struct file *file, poll_table *wait)
 	struct perf_event *event = file->private_data;
 	struct ring_buffer *rb;
 	__poll_t events = EPOLLHUP;
+	void * old_private = NULL;
 
-	poll_wait(file, &event->waitq, wait);
+	if (event->attr.task_clock) {
+		poll_wait(file, &event->task_clock_waitq, wait);
+	} else {
+		poll_wait(file, &event->waitq, wait);
+	}
 
 	if (is_event_hup(event))
 		return events;
@@ -5027,8 +5032,53 @@ static long _perf_ioctl(struct perf_event *event, unsigned int cmd, unsigned lon
 	u32 flags = arg;
 
 	switch (cmd) {
+	case PERF_EVENT_IOC_TASK_CLOCK_READ_CLOCK:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_read_clock) {
+			task_clock_func.task_clock_entry_read_clock(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_STOP_NO_NOTIFY:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_stop_no_notify) {
+			task_clock_func.task_clock_entry_stop_no_notify(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_START_NO_NOTIFY:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_start_no_notify) {
+			task_clock_func.task_clock_entry_start_no_notify(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_RESET:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_reset) {
+			task_clock_func.task_clock_entry_reset(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_STOP:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_stop) {
+			task_clock_func.task_clock_entry_stop(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_START:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_start) {
+			task_clock_func.task_clock_entry_start(
+				event->task_clock_group);
+		}
+		return 0;
 	case PERF_EVENT_IOC_ENABLE:
 		func = _perf_event_enable;
+		if (event->attr.task_clock && task_clock_func.task_clock_on_enable) {
+			task_clock_func.task_clock_on_enable(event->task_clock_group);
+		}
 		break;
 	case PERF_EVENT_IOC_DISABLE:
 		func = _perf_event_disable;
@@ -5036,7 +5086,55 @@ static long _perf_ioctl(struct perf_event *event, unsigned int cmd, unsigned lon
 	case PERF_EVENT_IOC_RESET:
 		func = _perf_event_reset;
 		break;
-
+	case PERF_EVENT_IOC_TASK_CLOCK_SLEEP:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_sleep) {
+			task_clock_func.task_clock_entry_sleep(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_WOKE_UP:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_woke_up) {
+			task_clock_func.task_clock_entry_woke_up(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_HALT:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_halt) {
+			task_clock_func.task_clock_entry_halt(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_activate) {
+			task_clock_func.task_clock_entry_activate(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE_OTHER:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_activate_other) {
+			task_clock_func.task_clock_entry_activate_other(
+				event->task_clock_group, arg);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_WAIT:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_entry_wait) {
+			task_clock_func.task_clock_entry_wait(
+				event->task_clock_group);
+		}
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_ADD_TICKS:
+		if (event->attr.task_clock &&
+		    task_clock_func.task_clock_add_ticks) {
+			task_clock_func.task_clock_add_ticks(
+				event->task_clock_group, arg);
+		}
+		return 0;
 	case PERF_EVENT_IOC_REFRESH:
 		return _perf_event_refresh(event, arg);
 
@@ -5111,6 +5209,27 @@ static long _perf_ioctl(struct perf_event *event, unsigned int cmd, unsigned lon
 		perf_event_for_each(event, func);
 	else
 		perf_event_for_each_child(event, func);
+
+
+	//TASK CLOCK: if this was a disable, we have to update our clock to
+	//reflect the instructions that were counted but never triggered an overflow.
+	//We have to do it here because it doesn't happen until after the diable
+	//is complete
+	if (cmd == PERF_EVENT_IOC_DISABLE && event->attr.task_clock) {
+		//lets just treat it like an overflow
+		//if (task_clock_func.task_clock_overflow_handler){
+		//task_clock_func.task_clock_overflow_handler(event->task_clock_group);
+		//}
+		if (task_clock_func.task_clock_on_disable) {
+			task_clock_func.task_clock_on_disable(
+				event->task_clock_group);
+		}
+	}
+
+	if (cmd == PERF_EVENT_IOC_ENABLE && event->attr.task_clock) {
+		//set the hardware idx
+		current->task_clock.user_status->hwc_idx = event->hw.idx;
+	}
 
 	return 0;
 }
@@ -6546,6 +6665,11 @@ __perf_event_output(struct perf_event *event,
 	struct perf_output_handle handle;
 	struct perf_event_header header;
 
+	//TASK_CLOCK call
+	if (event->attr.task_clock && task_clock_func.task_clock_overflow_handler) {
+		task_clock_func.task_clock_overflow_handler(event->task_clock_group, regs);
+	}
+
 	/* protect the callchain buffers */
 	rcu_read_lock();
 
@@ -7823,6 +7947,12 @@ static int __perf_event_overflow(struct perf_event *event,
 	return ret;
 }
 
+void perf_event_overflow_update_period(struct perf_event *event)
+{
+	if (event->attr.task_clock && task_clock_func.task_clock_overflow_update_period) {
+		task_clock_func.task_clock_overflow_update_period(event->task_clock_group);
+	}
+}
 int perf_event_overflow(struct perf_event *event,
 			  struct perf_sample_data *data,
 			  struct pt_regs *regs)
@@ -10036,6 +10166,7 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 
 
 	init_waitqueue_head(&event->waitq);
+	init_waitqueue_head(&event->task_clock_waitq);
 	event->pending_disable = -1;
 	init_irq_work(&event->pending, perf_pending_event);
 
@@ -10478,7 +10609,7 @@ SYSCALL_DEFINE5(perf_event_open,
 		struct perf_event_attr __user *, attr_uptr,
 		pid_t, pid, int, cpu, int, group_fd, unsigned long, flags)
 {
-	struct perf_event *group_leader = NULL, *output_event = NULL;
+	struct perf_event *group_leader = NULL, *output_event = NULL, *task_clock_leader = NULL;
 	struct perf_event *event, *sibling;
 	struct perf_event_attr attr;
 	struct perf_event_context *ctx, *uninitialized_var(gctx);
@@ -10547,6 +10678,13 @@ SYSCALL_DEFINE5(perf_event_open,
 	if (event_fd < 0)
 		return event_fd;
 
+	//get the group leader for this task_clock
+	if (attr.task_clock && group_fd != -1) {
+		task_clock_leader = perf_fget_light(group_fd, &fput_needed);
+		fput_needed = 0;
+		group_fd = -1;
+	}
+
 	if (group_fd != -1) {
 		err = perf_fget_light(group_fd, &group);
 		if (err)
@@ -10606,7 +10744,23 @@ SYSCALL_DEFINE5(perf_event_open,
 			goto err_alloc;
 		}
 	}
+	
+	/* setup the task_clock stuff */
+	if (attr.task_clock) {
+		//TASK_CLOCK call
+		if (task_clock_leader) {
+			event->task_clock_group = task_clock_leader->task_clock_group;
 
+		} else {
+			if (!task_clock_func.task_clock_group_init) {
+				goto err_task;
+			}
+			event->task_clock_group = task_clock_func.task_clock_group_init();
+		}
+		if (task_clock_func.task_clock_entry_init) {
+			task_clock_func.task_clock_entry_init(event->task_clock_group, event);
+		}
+	}
 	/*
 	 * Special case software events and allow them to be part of
 	 * any hardware group.

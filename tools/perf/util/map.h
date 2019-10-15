@@ -2,6 +2,7 @@
 #ifndef __PERF_MAP_H
 #define __PERF_MAP_H
 
+#include <stdlib.h>
 #include <linux/refcount.h>
 #include <linux/compiler.h>
 #include <linux/list.h>

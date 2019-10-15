@@ -41,7 +41,8 @@
 #define MS_KSNAP_GET 21
 #define MS_KSNAP_MAKE 22
 #define MS_KSNAP_GET_MERGE 32
-#define MS_KSNAP_DETERM_LAZY 64
+#define MS_KSNAP_PARTIAL 64
+#define MS_CONVERSION_DETERM_TOKEN_RELEASE 128
 #define MADV_NORMAL	0		/* no further special treatment */
 #define MADV_RANDOM	1		/* expect random page references */
 #define MADV_SEQUENTIAL	2		/* expect sequential page references */
@@ -71,6 +72,8 @@
 #define MADV_KSNAP_ALWAYS 200
 #define MADV_KSNAP_ADAPT 201
 #define MADV_KSNAP_PERIODIC 202
+#define MADV_KSNAP_SLEEP 203
+#define MADV_KSNAP_WAKE 204 
 #define MADV_KSNAP_TRACK 210
 
 /* compatibility flags */

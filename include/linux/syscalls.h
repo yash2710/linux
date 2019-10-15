@@ -1132,7 +1132,13 @@ asmlinkage long sys_mmap_pgoff(unsigned long addr, unsigned long len,
 			unsigned long fd, unsigned long pgoff);
 asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
 
+asmlinkage long sys_conversion_sync(unsigned long start, int flags, size_t editing_distance);
 
+asmlinkage long sys_task_clock_open(int fd, unsigned long tick_arr, int tid);
+
+asmlinkage long sys_conversion_determ_init(unsigned long addr, unsigned long token_addr);
+
+asmlinkage long sys_task_clock_do(uint32_t operation, uint64_t value);
 /*
  * Not a real system call, but a placeholder for syscalls which are
  * not implemented -- see kernel/sys_ni.c

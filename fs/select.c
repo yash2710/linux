@@ -31,6 +31,7 @@
 #include <linux/freezer.h>
 #include <net/busy_poll.h>
 #include <linux/vmalloc.h>
+#include <linux/perf_event.h>
 
 #include <linux/uaccess.h>
 

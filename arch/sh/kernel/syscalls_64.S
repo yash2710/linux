@@ -417,3 +417,7 @@ sys_call_table:
 	.long sys_copy_file_range
 	.long sys_preadv2
 	.long sys_pwritev2
+	.long sys_conversion_sync		/* 400 */
+	.long sys_task_clock_open		/* 401 */
+	.long sys_conversion_determ_init	/* 402 */
+	.long sys_task_clock_do			/* 403 */

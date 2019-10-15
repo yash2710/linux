@@ -821,6 +821,14 @@ __SYSCALL(__NR_statx, sys_statx)
 __SYSCALL(__NR_rseq, sys_rseq)
 #define __NR_io_pgetevents 399
 __SYSCALL(__NR_io_pgetevents, compat_sys_io_pgetevents)
+#define __NR_conversion_sync 400
+__SYSCALL(__NR_conversion_sync, sys_conversion_sync)
+#define __NR_task_clock_open 401
+__SYSCALL(__NR_task_clock_open, sys_task_clock_open)
+#define __NR_conversion_determ_init 402
+__SYSCALL(__NR_conversion_determ_init, sys_conversion_determ_init)
+#define __NR_task_clock_do 403
+__SYSCALL(__NR_task_clock_do, sys_task_clock_do)
 
 /*
  * Please add new compat syscalls above this comment and update

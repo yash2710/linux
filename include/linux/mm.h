@@ -2415,7 +2415,7 @@ struct mmap_snapshot {
 	int (*ksnap_tracking_on)(struct vm_area_struct *);
 	int (*ksnap_tracking_off)(struct vm_area_struct *);
 	void (*ksnap_userdata_copy)(struct vm_area_struct *, struct vm_area_struct *);
-	void (*snapshot_msync)(struct vm_area_struct *, unsigned long);
+	void (*snapshot_msync)(struct vm_area_struct *, unsigned long, size_t);
 	int (*remove_snapshot)(struct vm_area_struct *);
 	int (*init_snapshot)(struct vm_area_struct *);
 	int (*remove_subscriber)(struct vm_area_struct *);
@@ -2425,6 +2425,12 @@ struct mmap_snapshot {
 	void (*stats_dec_pages_allocated)(void);
 	void (*ksnap_crash_handler)(int, struct page *);
 	int snap_sequence_number;
+	unsigned long (*conversion_determ_init)(struct vm_area_struct *, unsigned long);
+	void (*conversion_thread_status)(struct vm_area_struct *, unsigned long);
+	void (*circ_buffer_add)(struct vm_area_struct *, uint64_t);
+	struct page *(*cv_page_alloc)(struct vma_area_struct *vma);
+	void (*conv_cow_user_page)(struct page *new_page, struct page *old_page,
+				   unsigned long address, struct vma_area_struct *vma, struct mm_struct *);
 };
 
 extern struct mmap_snapshot mmap_snapshot_instance;
