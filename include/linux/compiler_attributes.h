@@ -99,7 +99,9 @@
  *
  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-const-function-attribute
  */
+#ifndef __attribute_const__
 #define __attribute_const__             __attribute__((__const__))
+#endif // !__attribute_const__
 
 /*
  * Optional: only supported since gcc >= 9
