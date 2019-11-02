@@ -1702,14 +1702,14 @@ static unsigned long isolate_lru_pages(unsigned long nr_to_scan,
 
 		default:
 			pr_emerg("uh oh!!!!\n\n\n\n");
-			dump_page(page);
+			dump_page(page,NULL);
 			int i;
 			pr_emerg("\n\ndebug flags\n\n");
 			for (i = 0; i < 20; ++i) {
 				pr_emerg("%d %d ", i, page->snap_page_debug[i]);
 			}
 			pr_emerg("\n\n");
-			pr_emerg("an LRU page? %d a file cache page? %d, mode %d, file %d\n", PageLRU(page), page_is_file_cache(page), mode, file);
+			pr_emerg("an LRU page? %d a file cache page? %d, mode %d\n", PageLRU(page), page_is_file_cache(page), mode);
 			BUG();
 		}
 	}

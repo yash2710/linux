@@ -219,7 +219,7 @@ int __anon_vma_prepare(struct vm_area_struct *vma)
  out_enomem:
 	return -ENOMEM;
 }
-EXPORT_SYMBOL(__anon_vma_prepare)
+EXPORT_SYMBOL(__anon_vma_prepare);
 /*
  * This is a useful helper function for locking the anon_vma root as
  * we traverse the vma->anon_vma_chain, looping over anon_vma's that

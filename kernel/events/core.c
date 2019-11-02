@@ -10680,8 +10680,9 @@ SYSCALL_DEFINE5(perf_event_open,
 
 	//get the group leader for this task_clock
 	if (attr.task_clock && group_fd != -1) {
-		task_clock_leader = perf_fget_light(group_fd, &fput_needed);
-		fput_needed = 0;
+		task_clock_leader = perf_fget_light(group_fd, &group);
+		group.file = NULL;
+		group.flags = 0;
 		group_fd = -1;
 	}
 

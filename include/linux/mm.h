@@ -2428,9 +2428,9 @@ struct mmap_snapshot {
 	unsigned long (*conversion_determ_init)(struct vm_area_struct *, unsigned long);
 	void (*conversion_thread_status)(struct vm_area_struct *, unsigned long);
 	void (*circ_buffer_add)(struct vm_area_struct *, uint64_t);
-	struct page *(*cv_page_alloc)(struct vma_area_struct *vma);
+	struct page *(*cv_page_alloc)(struct vm_area_struct *vma);
 	void (*conv_cow_user_page)(struct page *new_page, struct page *old_page,
-				   unsigned long address, struct vma_area_struct *vma, struct mm_struct *);
+				   unsigned long address, struct vm_area_struct *vma, struct mm_struct *);
 };
 
 extern struct mmap_snapshot mmap_snapshot_instance;

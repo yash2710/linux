@@ -16,9 +16,6 @@
 #include <linux/workqueue.h>
 #include <linux/time.h>
 #include <asm/mmu.h>
-/*SNAP*/
-#include <linux/radix-tree.h>
-/*END SNAP*/
 #ifndef AT_VECTOR_SIZE_ARCH
 #define AT_VECTOR_SIZE_ARCH 0
 #endif
@@ -263,7 +260,9 @@ struct vm_userfaultfd_ctx {
 #define NULL_VM_UFFD_CTX ((struct vm_userfaultfd_ctx) {})
 struct vm_userfaultfd_ctx {};
 #endif /* CONFIG_USERFAULTFD */
-
+	
+struct xarray;
+#define radix_tree_root xarray
 /*
  * This struct defines a memory VMM memory area. There is one of these
  * per VM-area/task.  A VM area is any part of the process virtual memory
@@ -332,16 +331,14 @@ struct vm_area_struct {
 #ifdef CONFIG_NUMA
 	struct mempolicy *vm_policy;	/* NUMA policy for the VMA */
 #endif
-	struct vm_userfaultfd_ctx vm_userfaultfd_ctx;
+	struct vm_userfaultfd_ctx vm_userfaultfd_ctx;	
 	
 	/*SNAP*/
 	void *ksnap_user_data;
 
 	void *snapshot_pte_list; /*TODO: change to list_head if that's what we want this to be....*/
-	struct radix_tree_root
-		snapshot_page_tree; /*used for keeping track of the current page index -> pte, gets used when we get snapshot*/
-	wait_queue_head_t
-		snapshot_wq; /*wait queue for blocking get_snapshot requests*/
+	struct radix_tree_root *snapshot_page_tree; /*used for keeping track of the current page index -> pte, gets used when we get snapshot*/
+	wait_queue_head_t snapshot_wq; /*wait queue for blocking get_snapshot requests*/
 	atomic_t revision_number; /*the current revision number*/
 	atomic_t always_ref_count; /*How many processes want ALWAYS COMMIT*/
 	atomic_t adapt_ref_count; /*How many processes want ADAPT COMMIT*/

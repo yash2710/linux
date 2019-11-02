@@ -13,7 +13,7 @@
 #include <linux/slab.h>
 #include <linux/export.h>
 #include <linux/nmi.h>
-
+#include <asm/tlbflush.h>
 #include <asm/cpufeature.h>
 #include <asm/hardirq.h>
 #include <asm/intel-family.h>
@@ -3567,7 +3567,7 @@ static void intel_pmu_cpu_starting(int cpu)
 	 * Deal with CPUs that don't clear their LBRs on power-up.
 	 */
 	intel_pmu_lbr_reset();
-	set_in_cr4(X86_CR4_PCE);
+    cr4_set_bits(X86_CR4_PCE);
 	cpuc->lbr_sel = NULL;
 
 	if (x86_pmu.flags & PMU_FL_TFA) {

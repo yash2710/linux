@@ -362,7 +362,7 @@ struct perf_event_attr {
 				sample_id_all  :  1, /* sample_type all events */
 
 				exclude_host   :  1, /* don't count in host   */
-				exclude_guest  :  1, /* don't count in guest  */
+				exclude_guest  :  1, /*5 in guest  */
 				task_clock		 :	1,
 				exclude_callchain_kernel : 1, /* exclude kernel callchains */
 				exclude_callchain_user   : 1, /* exclude user callchains */
@@ -372,7 +372,7 @@ struct perf_event_attr {
 				context_switch :  1, /* context switch data */
 				write_backward :  1, /* Write ring buffer from end to beginning */
 				namespaces     :  1, /* include namespaces data */
-				__reserved_1   : 35;
+				__reserved_1   : 34;
 
 	union {
 		__u32		wakeup_events;	  /* wakeup every n events */

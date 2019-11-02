@@ -1104,7 +1104,7 @@ again:
 			rss[mm_counter(page)]--;
 			page_remove_rmap(page, false);
 			if (unlikely(page_mapcount(page) < 0)) {
-				pr_alert("page_mapcount < 0, page PTE at %p\n", addr)
+				pr_alert("page_mapcount < 0, page PTE at %p\n", addr);
 				print_bad_pte(vma, addr, ptent, page);
 			}
 			if (unlikely(__tlb_remove_page(tlb, page))) {
@@ -2191,9 +2191,10 @@ static vm_fault_t do_page_mkwrite(struct vm_fault *vmf)
  *
  * The function expects the page to be locked and unlocks it.
  */
-static void fault_dirty_shared_page(struct vm_area_struct *vma,
-				    struct page *page)
+static void fault_dirty_shared_page(struct vm_fault *vmf)
 {
+	struct vm_area_struct *vma = vmf->vma;
+    struct page *page = vmf->page;
 	struct address_space *mapping;
 	bool dirtied;
 	bool page_mkwrite = vma->vm_ops && vma->vm_ops->page_mkwrite;
@@ -2209,9 +2210,9 @@ static void fault_dirty_shared_page(struct vm_area_struct *vma,
 	mapping = page_rmapping(page);
 	if (is_conv_seg &&
 	    mmap_snapshot_instance.do_snapshot_add_pte) {
-		mmap_snapshot_instance.do_snapshot_add_pte(vma, page, page_table, address);
+		mmap_snapshot_instance.do_snapshot_add_pte(vma, page, vmf->pte, vmf->address);
 		if (incremented_anon == 1) {
-			dec_mm_counter_fast(mm, MM_ANONPAGES);
+			dec_mm_counter_fast(vma->vm_mm, MM_ANONPAGES);
 		}
 	}
 	unlock_page(page);
@@ -2300,7 +2301,7 @@ static vm_fault_t wp_page_copy(struct vm_fault *vmf)
 			goto oom;
 
 		if (is_conv_seg && mmap_snapshot_instance.conv_cow_user_page)
-			mmap_snapshot_instance.conv_cow_user_page(new_page, old_page, address, vma, &init_mm);
+			mmap_snapshot_instance.conv_cow_user_page(new_page, old_page, vmf->address, vma, &init_mm);
 		else
 			cow_user_page(new_page, old_page, vmf->address, vma);
 	}
@@ -2321,7 +2322,7 @@ static vm_fault_t wp_page_copy(struct vm_fault *vmf)
 	if (likely(pte_same(*vmf->pte, vmf->orig_pte))) {
 		if (old_page) {
 			if (!PageAnon(old_page)) {
-				dec_mm_counter_fast(mm,
+				dec_mm_counter_fast(vma->vm_mm,
 						mm_counter_file(old_page));
 				incremented_anon = 1;
 				inc_mm_counter_fast(mm, MM_ANONPAGES);
@@ -2501,7 +2502,7 @@ static vm_fault_t wp_page_shared(struct vm_fault *vmf)
 		wp_page_reuse(vmf);
 		lock_page(vmf->page);
 	}
-	fault_dirty_shared_page(vma, vmf->page);
+	fault_dirty_shared_page(vmf);
 	put_page(vmf->page);
 
 	return VM_FAULT_WRITE;
@@ -2569,7 +2570,7 @@ static vm_fault_t do_wp_page(struct vm_fault *vmf)
 		}
 		bool reuse;
 		/*don't reuse if snapshot*/
-		if (is_conv_seg)) {
+		if (is_conv_seg) {
 			reuse = false;
 		}
 		else
@@ -3331,7 +3332,7 @@ vm_fault_t finish_fault(struct vm_fault *vmf)
 {
 	struct page *page;
 	vm_fault_t ret = 0;
-	bool is_conv_seg = (mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
+	bool is_conv_seg = (mmap_snapshot_instance.is_snapshot && mmap_snapshot_instance.is_snapshot(vmf->vma, NULL, NULL));
 	/* Did we COW the page? */
 	if ((vmf->flags & FAULT_FLAG_WRITE) &&
 	    !(vmf->vma->vm_flags & VM_SHARED))
@@ -3354,10 +3355,11 @@ vm_fault_t finish_fault(struct vm_fault *vmf)
 	    is_conv_seg &&
 	    mmap_snapshot_instance.do_snapshot_add_pte) {
 		//decrement the counter...we do our own accounting and this will screw it up
-		if (anon) {
-			dec_mm_counter_fast(mm, MM_ANONPAGES);
+        if ((vmf->flags & FAULT_FLAG_WRITE) &&
+            !(vmf->vma->vm_flags & VM_SHARED)) {
+			dec_mm_counter_fast(vmf->vma->vm_mm, MM_ANONPAGES);
 		} else {
-			dec_mm_counter_fast(mm, MM_FILEPAGES);
+			dec_mm_counter_fast(vmf->vma->vm_mm, MM_FILEPAGES);
 		}
 		mmap_snapshot_instance.do_snapshot_add_pte(vmf->vma, NULL, vmf->pte, vmf->address);
 	}
@@ -3580,7 +3582,7 @@ static vm_fault_t do_shared_fault(struct vm_fault *vmf)
 		return ret;
 	}
 
-	fault_dirty_shared_page(vma, vmf->page);
+	fault_dirty_shared_page(vmf);
 	return ret;
 }
 

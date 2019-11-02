@@ -49,7 +49,7 @@
 #include <linux/buffer_head.h> /* for try_to_free_buffers */
 
 #include <asm/mman.h>
-
+struct tim_debug tim_debug_instance;
 /*
  * Shared mappings implemented 30.11.1994. It's not fully working yet,
  * though.
@@ -816,7 +816,7 @@ static int __add_to_page_cache_locked(struct page *page,
 	}
 
 	if (tim_debug_instance.ptr_of_interest3 == mapping) {
-		if (mapping -> mrpages > 130) {
+		if (mapping -> nrpages > 130) {
 			pr_emerg(" greater than 130\n");
 			dump_stack();
 		}

@@ -590,7 +590,7 @@ static void bad_page(struct page *page, const char *reason,
 
 	int i = 0;
 	for(;i<20;i++) {
-		pr_alert("DEBUG %d: %lu\n", i, page->snap_page_debug[i])
+		pr_alert("DEBUG %d: %lu\n", i, page->snap_page_debug[i]);
 	}
 
 	pr_alert("BUG: Bad page state in process %s  pfn:%05lx\n",
